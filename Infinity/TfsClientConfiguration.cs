@@ -1,25 +1,61 @@
-﻿using System;
+﻿using Infinity.Util;
+using System;
 using System.Net;
 
 namespace Infinity
 {
+    public enum AuthenticationType
+    {
+        Basic = 0,
+        OAuth
+    }
+
     /// <summary>
     /// Configuration for a <see cref="TfsClient"/> instance.
     /// </summary>
     public class TfsClientConfiguration
     {
+
+        private readonly AuthenticationType authenticationType;
+        private readonly string accessToken;
+        private readonly NetworkCredential credentials;
+
+        public AuthenticationType AuthenticationType
+        {
+            get
+            {
+                return this.authenticationType;
+            }
+        }
+ 
         /// <summary>
         /// Configuration for a <see cref="TfsClient"/> instance.
         /// </summary>
-        public TfsClientConfiguration()
+        public TfsClientConfiguration(Uri url, string userAgent, string username, string password)
+            : this(url, userAgent, username, password, null)
         {
+
         }
 
-        internal TfsClientConfiguration(TfsClientConfiguration original)
+        public TfsClientConfiguration(Uri url, string userAgent, string username, string password, string domain)
         {
-            Url = original.Url;
-            Credentials = new NetworkCredential(original.Credentials.UserName, original.Credentials.Password, original.Credentials.Domain);
-            UserAgent = original.UserAgent;
+            Assert.NotNullOrEmpty(username, "username");
+            Assert.NotNullOrEmpty(password, "password");
+
+            this.Url = url;
+            this.credentials = domain == null ? 
+                new NetworkCredential(username, password) : new NetworkCredential(username, password, domain);
+            this.UserAgent = userAgent;
+            this.authenticationType = Infinity.AuthenticationType.Basic;
+        }
+
+        public TfsClientConfiguration(Uri url, string userAgent, string accessToken)
+        {
+            Assert.NotNullOrEmpty(accessToken, "accessToken");
+
+            this.Url = url;
+            this.UserAgent = UserAgent;
+            this.accessToken = accessToken;
         }
 
         /// <summary>
@@ -36,6 +72,7 @@ namespace Infinity
             set;
         }
 
+        
         /// <summary>
         /// The credentials to authenticate with.  For Visual Studio Online,
         /// this should be the username of the "alternate credentials"
@@ -44,8 +81,25 @@ namespace Infinity
         /// </summary>
         public NetworkCredential Credentials
         {
-            get;
-            set;
+            get
+            {
+                if (this.AuthenticationType != Infinity.AuthenticationType.Basic)
+                    throw new InvalidOperationException("Not configured to use basic authentication");
+
+                return this.credentials;
+            }
+        }
+
+        
+        public string AccessToken
+        {
+            get
+            {
+                if (this.AuthenticationType != Infinity.AuthenticationType.OAuth)
+                    throw new InvalidOperationException("Not configured to use OAuth access token");
+
+                return this.accessToken;
+            }
         }
 
         /// <summary>

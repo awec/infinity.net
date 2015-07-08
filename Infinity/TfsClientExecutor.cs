@@ -95,6 +95,7 @@ namespace Infinity
             {
                 client = new HttpClient(MessageHandler, false);
             }
+
             else if (Configuration.Credentials != null && !IsVisualStudioOnline())
             {
                 client = new HttpClient(new HttpClientHandler
@@ -112,7 +113,30 @@ namespace Infinity
              * signin page.  Front-load basic credentials if they were
              * provided.
              */
-            if (Configuration.Credentials != null && IsVisualStudioOnline())
+            if (IsVisualStudioOnline())
+            {
+                if(Configuration.AuthenticationType == AuthenticationType.Basic)
+                {
+                    string concat = String.Format("{0}:{1}", Configuration.Credentials.UserName, Configuration.Credentials.Password);
+                    string base64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(concat));
+
+                    client.DefaultRequestHeaders.Authorization =
+                        new AuthenticationHeaderValue("Basic", base64);
+                }
+                else
+                {
+                    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Configuration.AccessToken);
+                }
+            }
+
+            client.BaseAddress = Configuration.Url;
+
+            return client;
+        }
+
+        private HttpClient SetupBasicAuth(HttpClient client, NetworkCredential credentials)
+        {
+            if(credentials != null)
             {
                 string concat = String.Format("{0}:{1}", Configuration.Credentials.UserName, Configuration.Credentials.Password);
                 string base64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(concat));
@@ -121,8 +145,12 @@ namespace Infinity
                     new AuthenticationHeaderValue("Basic", base64);
             }
 
-            client.BaseAddress = Configuration.Url;
+            return client;
+        }
 
+        private HttpClient SetupOAuth(HttpClient client, string accessToken)
+        {
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
             return client;
         }
 
